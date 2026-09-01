@@ -9,3 +9,5 @@
 ## Oscar Morales
 
 ## Daniel Polina
+
+## Diego Israel
