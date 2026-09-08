@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
 
-test("10 - 4", () => {
-  expect(10 - 4).toBe(6);
+test("10 -9", () => {
+  expect(10 - 9).toBe(1);
 });
