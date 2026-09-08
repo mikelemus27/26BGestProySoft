@@ -5,7 +5,7 @@ test("2 + 2", () => {
 
 
 });
-test("potencia", () => {
+test("potencia 2 al cuadrado", () => {
   expect(2*2).toBe(4);
 
   
