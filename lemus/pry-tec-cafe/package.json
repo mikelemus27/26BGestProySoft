@@ -1,0 +1,23 @@
+{
+  "name": "pry-tec-cafe",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "exec": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose --coverage"
+    
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.14",
+    "ts-jest": "^29.4.6",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
