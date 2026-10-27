@@ -1,222 +1,117 @@
--------------------------------------------------
+# _01_sgc_backend — Commands
 
-To stop all running Docker containers gracefully, use the command 
+Quick reference for the Bun + PostgreSQL backend (`sgc_backend` + `SGC_postgres`, DB `sgc_db`).
 
-docker stop $(docker ps -q).  
+---
 
-This retrieves the IDs of all active containers and sends them a SIGTERM signal, allowing applications to shut down cleanly within a default timeout period (usually 10 seconds). 
+## Docker Compose lifecycle
 
--------------------------------------------------
+```bash
+# Start everything (build backend, start DB, wait for healthy)
+docker compose up -d --build
 
-For different scenarios, consider these alternatives:
-
--------------------------------------------------
-
-Stop all containers including stopped ones: 
-
-Use docker stop $(docker ps -aq) 
-
-to halt every container, regardless of current status. 
-
--------------------------------------------------
-Force kill unresponsive containers: 
-
-
-Use docker kill $(docker ps -q) 
-
-to send a SIGKILL signal, which terminates containers immediately without grace period. 
-
--------------------------------------------------
-
-Stop and remove all containers: 
-Combine commands to stop and then delete all containers with 
-
-docker stop $(docker ps -q) && docker rm $(docker ps -aq), 
-
-or use the forceful single command 
-
-docker rm -f $(docker ps -aq). 
-
--------------------------------------------------
-
-Docker Compose projects: 
-
--------------------------------------------------
-
-If containers were started via docker-compose.yml, use 
-
-docker compose down 
-
-to stop and remove all services defined in that stack. 
-
--------------------------------------------------
-
-To avoid errors when no containers are running, pipe the output through xargs with the -r flag 
-
-(e.g., docker ps -q | xargs -r docker stop)
-
-, or assign the IDs to a variable and check if it is non-empty before executing the stop command
-
--------------------------------------------------
-Levanta solo Postgres usando tu docker-compose.yml (que sí tiene ports: "5432:5432"):
-bash
-
-docker compose up -d postgres
-
--------------------------------------------------
-Mira qué contenedores existen ahora:
-bash
-
+# Status / containers
+docker compose ps
 docker ps -a
-Localiza el de Postgres (imagen postgres:16-alpine) y copia su NOMBRE o ID.
 
-Saca la IP con ese nombre/ID (ejemplo usando el nombre que te salga en NAMES):
+# Logs (backend)
+docker compose logs -f sgc_backend
 
-bash
+# Logs (DB)
+docker compose logs -f SGC_postgres
 
-docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' NOMBRE_DEL_CONTENEDOR_POSTGRES
+# Stop and remove services/containers/network (keep volume `SGC_postgres_data`)
+docker compose down
 
----------------------------------------------------
+# Stop and also drop named volume (resets DB to init script)
+docker compose down -v
+```
 
-ejecutar  todo los  servicios de  docker compose.yml
+---
 
-sudo docker compose up --build
+## Build / test (local, no Docker)
 
-------------------------------------------------------------
-ver las  redes 
+```bash
+# Dependencies (once)
+bun install
 
-sudo docker network ls
+# Run tests
+bun test
+bun test ./test/create-usuario-handler.test.ts
 
------------------------------ 
-ver todos los  volumes
+# Build (verify bundling; `pg` may require install for full build test)
+bun build ./src/index.ts --outdir ./dist
+```
 
-sudo docker volume ls
+---
 
-----------------------------
+## DB access (`sgc_db`, user `admin`)
 
+```bash
+# Open psql inside the running DB container
+docker exec -it $(docker compose ps -q SGC_postgres) psql -U admin -d sgc_db
 
-postgress
+# Run init schema manually (only when data dir is empty; compose mounts it at init)
+docker exec -i $(docker compose ps -q SGC_postgres) psql -U admin -d sgc_db < ./db/init/01-schema.sql
+```
 
-crear la bd: 
-sudo docker exec -i 06_practica-microservicio-bun_hexa_userapi_ok-postgres-1 psql -U admin -d escuela
+Inside `psql`:
 
-conectarse a la bd escuela
-$ sudo docker exec -it 06_practica-microservicio-bun_hexa_userapi_ok-postgres-1 psql -U admin -d escuela
+```sql
+\dt
+SELECT * FROM usuario;
+```
 
+---
 
-escuela=# CREATE TABLE usuario (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL
-);
-CREATE TABLE
-escuela=# \dt
-        List of relations
- Schema |  Name   | Type  | Owner
---------+---------+-------+-------
- public | usuario | table | admin
-(1 row)
+## Health / API checks (port 4001)
 
-escuela=# INSERT INTO usuario (nombre, email) VALUES
-escuela-#     ('Juan Pérez', 'juan@example.com'),
-escuela-#     ('María Gómez', 'maria@example.com'),
-escuela-#     ('Carlos Ruiz', 'carlos@example.com'),
-escuela-#     ('Ana López', 'ana@example.com'),
-escuela-#     ('Luis Fernández', 'luis@example.com');
-INSERT 0 5
-escuela=# select * from usuarios;
-ERROR:  relation "usuarios" does not exist
-LINE 1: select * from usuarios;
-                      ^
-escuela=# select * from usuario;
- id |     nombre     |       email
-----+----------------+--------------------
-  1 | Juan Pérez     | juan@example.com
-  2 | María Gómez    | maria@example.com
-  3 | Carlos Ruiz    | carlos@example.com
-  4 | Ana López      | ana@example.com
-  5 | Luis Fernández | luis@example.com
+```bash
+# Health endpoint
+curl -s http://localhost:4001/health | head -c 200
 
+# List users
+curl -s http://localhost:4001/usuarios | head -c 200
 
-  curl
-
-  mgl@mgl-HP-lap:~/26Aprogweb/ts/_06_practica-microservicio-bun_Hexa_UserApi_ok$ curl -X POST http://localhost:3000/usuarios \
+# Create user (201 expected)
+curl -X POST http://localhost:4001/usuarios \
   -H "Content-Type: application/json" \
-  -d '{
-    "nombre": "Juan Pérez",
-    "email": "juan@example.com"
-  }'
-{
-  "id": 6,
-  "nombre": "{\"nombre\":\"Juan Pérez\",\"email\":\"juan@example.com\"}",
-  "email": "{}"
-mgl@mgl-HP-lap:~/26Aprogweb/ts/_06_practica-microservicio-bun_Hexa_UserApi_ok$ curl -v http://localhost:3000/usuarioss
-* Host localhost:3000 was resolved.
-* IPv6: ::1
-* IPv4: 127.0.0.1
-*   Trying [::1]:3000...
-* Connected to localhost (::1) port 3000
-> GET /usuarios HTTP/1.1
-> Host: localhost:3000
-> User-Agent: curl/8.5.0
-> Accept: */*
->
-< HTTP/1.1 200 OK
-< Content-Type: application/json
-< Date: Thu, 21 May 2026 03:53:46 GMT
-< Content-Length: 541
-<
-[
-  {
-    "id": 1,
-    "nombre": "Juan Pérez",
-    "email": "juan@example.com"
-  },
-  {
-    "id": 2,
-    "nombre": "María Gómez",
-    "email": "maria@example.com"
-  },
-  {
-    "id": 3,
-    "nombre": "Carlos Ruiz",
-    "email": "carlos@example.com"
-  },
-  {
-    "id": 4,
-    "nombre": "Ana López",
-    "email": "ana@example.com"
-  },
-  {
-    "id": 5,
-    "nombre": "Luis Fernández",
-    "email": "luis@example.com"
-  },
-  {
-    "id": 6,
-    "nombre": "{\"nombre\":\"Juan Pérez\",\"email\":\"juan@example.com\"}",
-    "email": "{}"
-  }
-* Connection #0 to host localhost left intact
+  -d '{"nombre":"Ana","email":"ana@test.com"}'
 
-update usuario-----------------------------------------------
-mgl@mgl-HP-lap:~/26Aprogweb/ts/_06_practica-microservicio-bun_Hexa_UserApi_ok$ curl -X PUT http://localhost:3000/usuarios/1   -H "Content-Type: application/json"   -d '{
-    "nombre": "Juan Pérez Actualizado",
-    "email": "juan.actualizado@example.com"
-  }'
-{
-  "id": 1,
-  "nombre": "Juan Pérez Actualizado",
-  "email": "juan.actualizado@example.com"}
+# Update user (1)
+curl -X PUT http://localhost:4001/usuarios/1 \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Ana Updated","email":"ana.updated@test.com"}'
 
-  Delete usuario
+# Delete user (e.g., 2)
+curl -X DELETE http://localhost:4001/usuarios/2
 
-  mgl@mgl-HP-lap:~/26Aprogweb/ts/_06_practica-microservicio-bun_Hexa_UserApi_ok$ curl -X DELETE http://localhost:3000/usuarios/7
-{
-  "message": "Usuario eliminado",
-  "usuario": {
-    "id": 7,
-    "nombre": "Juan Pérez",
-    "email": "juan@perez.com"
-  }
-}
+# Unknown route -> 404
+curl -w "\n%{http_code}\n" -o /dev/null -s http://localhost:4001/unknown
+```
+
+---
+
+## Inspect / debug
+
+```bash
+# Networks
+docker network ls
+
+# Volumes
+docker volume ls
+
+# Inspect DB service IP
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker compose ps -q SGC_postgres)
+
+# View compose file path
+pwd
+```
+
+---
+
+## Clean stop (only containers; keeps volume and DB)
+
+```bash
+docker compose stop
+```
