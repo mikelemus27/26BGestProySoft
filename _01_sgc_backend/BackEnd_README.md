@@ -197,18 +197,18 @@ The microservice automatically reads connection parameters from environment vari
 
 | Variable | Description | Default (Local) | Docker Compose Default |
 | :--- | :--- | :--- | :--- |
-| `DB_HOST` | Hostname or IP of PostgreSQL instance | `postgres` | `postgres` |
+| `DB_HOST` | Hostname or IP of PostgreSQL instance | `localhost` | `SGC_postgres` |
 | `DB_PORT` | Port number of PostgreSQL instance | `5432` | `5432` |
 | `DB_USER` | PostgreSQL database username | `admin` | `admin` |
 | `DB_PASSWORD` | PostgreSQL database password | `REMOVED` | `REMOVED` |
-| `DB_NAME` | PostgreSQL database name | `escuela` | `escuela` |
-| `PORT` | Microservice listening port | `3000` | `3000` |
+| `DB_NAME` | PostgreSQL database name | `sgc_db` | `sgc_db` |
+| `PORT` | Microservice listening port | `4001` | `4001` |
 
 ---
 
 ## 🗄️ Database Setup & Schema
 
-The microservice connects to the `escuela` database and interacts with the `usuario` table.
+The microservice connects to the `sgc_db` database (compose POSTGRES_DB) and interacts with the `usuario` table.
 
 ### Schema DDL
 
@@ -262,7 +262,7 @@ ON CONFLICT (email) DO NOTHING;
 3. **Check container status and logs:**
    ```bash
    docker compose ps
-   docker compose logs -f bun_app
+   docker compose logs -f sgc_backend
    ```
 
 4. **Stop the containers:**
@@ -281,7 +281,7 @@ ON CONFLICT (email) DO NOTHING;
 
 2. **Start PostgreSQL database only (via Docker):**
    ```bash
-   docker compose up -d postgres
+   docker compose up -d SGC_postgres
    ```
 
 3. **Export environment variables (point to `localhost`):**
@@ -290,12 +290,12 @@ ON CONFLICT (email) DO NOTHING;
    export DB_PORT=5432
    export DB_USER=admin
    export DB_PASSWORD=REMOVED
-   export DB_NAME=escuela
+   export DB_NAME=sgc_db
    ```
 
 4. **Create the database table:**
    ```bash
-   docker compose exec postgres psql -U admin -d escuela -c "
+   docker compose exec SGC_postgres psql -U admin -d sgc_db -c "
    CREATE TABLE IF NOT EXISTS usuario (
        id SERIAL PRIMARY KEY,
        nombre VARCHAR(100) NOT NULL,
@@ -311,7 +311,7 @@ ON CONFLICT (email) DO NOTHING;
    The server will start at:
    ```text
    🚀 Microservicio ejecutándose
-   🌐 http://localhost:3000
+   🌐 http://localhost:4001
    ```
 
 ---
@@ -334,7 +334,7 @@ ON CONFLICT (email) DO NOTHING;
 
 #### 1. List All Users
 ```bash
-curl -X GET http://localhost:3000/usuarios
+curl -X GET http://localhost:4001/usuarios
 ```
 **Response (`200 OK`):**
 ```json
@@ -356,7 +356,7 @@ curl -X GET http://localhost:3000/usuarios
 
 #### 2. Create a New User
 ```bash
-curl -X POST http://localhost:3000/usuarios \
+curl -X POST http://localhost:4001/usuarios \
   -H "Content-Type: application/json" \
   -d '{
     "nombre": "Elena García",
@@ -387,7 +387,7 @@ The automated API tests assert these create-user outcomes separately: a new emai
 
 #### 3. Get User by ID
 ```bash
-curl -X GET http://localhost:3000/usuarios/1
+curl -X GET http://localhost:4001/usuarios/1
 ```
 **Response (`200 OK`):**
 ```json
@@ -409,7 +409,7 @@ curl -X GET http://localhost:3000/usuarios/1
 
 #### 4. Update an Existing User
 ```bash
-curl -X PUT http://localhost:3000/usuarios/1 \
+curl -X PUT http://localhost:4001/usuarios/1 \
   -H "Content-Type: application/json" \
   -d '{
     "nombre": "Juan Pérez Actualizado",
@@ -429,7 +429,7 @@ curl -X PUT http://localhost:3000/usuarios/1 \
 
 #### 5. Delete a User
 ```bash
-curl -X DELETE http://localhost:3000/usuarios/6
+curl -X DELETE http://localhost:4001/usuarios/6
 ```
 **Response (`200 OK`):**
 ```json
@@ -451,7 +451,7 @@ The Bun API integration suite covers health/readiness and user CRUD behavior aga
 
 ### Running the Test Suite
 
-The API server and PostgreSQL must be running on port `4001`. For a local API server, run:
+The API server must be running on port `4001` and PostgreSQL on port `5432`. For a local API server, run:
 
 ```bash
 bun run test:all
@@ -534,16 +534,16 @@ The [Dockerfile](Dockerfile) uses a hardened 3-stage pattern to minimize image s
 3. **Stage 3 (`production`)**:
    - Copies solely the built `./dist` bundle and lightweight `node_modules`.
    - Drops root privileges with `USER bunuser`.
-   - Exposes port `3000` and executes `bun run ./dist/index.js`.
+   - Exposes port `4001` and executes `bun run ./dist/index.js`.
 
 ### Building Standalone Docker Image
 ```bash
 docker build -t user-api-bun:latest .
-docker run -p 3000:3000 \
+docker run -p 4001:4001 \
   -e DB_HOST=host.docker.internal \
   -e DB_USER=admin \
   -e DB_PASSWORD=REMOVED \
-  -e DB_NAME=escuela \
+  -e DB_NAME=sgc_db \
   user-api-bun:latest
 ```
 

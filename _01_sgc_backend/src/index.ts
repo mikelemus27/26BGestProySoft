@@ -107,7 +107,7 @@ SERVIDOR
 
 const server = Bun.serve({
 
-  port: 4001,
+  port: Number(process.env.PORT) || 4001,
 
   async fetch(req) {
 
