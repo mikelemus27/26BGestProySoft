@@ -1,17 +1,20 @@
 # _01_sgc_backend — Commands
 
-Quick reference for the Bun + PostgreSQL backend (`sgc_backend` + `SGC_postgres`, DB `sgc_db`).
+Quick reference for the Bun + PostgreSQL backend (`sgc_backend` + `SGC_postgres`, DB `sgc_db`, port `4001`).
 
 ---
 
 ## Docker Compose lifecycle
 
 ```bash
-# Start everything (build backend, start DB, wait for healthy)
+# Start everything in background (build backend, start DB, wait for healthy)
 docker compose up -d --build
 
-# Status / containers
+# Status / running containers
 docker compose ps
+docker ps
+
+# View all containers (including stopped)
 docker ps -a
 
 # Logs (backend)
@@ -20,27 +23,71 @@ docker compose logs -f sgc_backend
 # Logs (DB)
 docker compose logs -f SGC_postgres
 
-# Stop and remove services/containers/network (keep volume `SGC_postgres_data`)
-docker compose down
-
-# Stop and also drop named volume (resets DB to init script)
-docker compose down -v
+# Restart a specific service
+docker compose restart sgc_backend
 ```
 
 ---
 
-## Build / test (local, no Docker)
+## Stop & Clean Containers
+
+```bash
+# 1. Stop only project containers (graceful stop; keeps containers and volume)
+docker compose stop
+
+# 2. Stop ALL running containers on the system (Docker host)
+docker stop $(docker ps -q)
+# Safe version (avoids error when no containers are running):
+docker ps -q | xargs -r docker stop
+
+# 3. Force-kill ALL running containers on the system
+docker ps -q | xargs -r docker kill
+
+# 4. Stop and remove project containers & network (preserves volume `SGC_postgres_data`)
+docker compose down
+
+# 5. Stop and drop named volume (resets DB to init script)
+docker compose down -v
+
+# 6. Remove stopped containers / unused resources
+docker container prune -f
+```
+
+---
+
+## Run locally (Bun)
 
 ```bash
 # Dependencies (once)
 bun install
 
-# Run tests
-bun test
-bun test ./test/create-usuario-handler.test.ts
+# Run backend with hot reload (listens on port 4001)
+bun --watch src/index.ts
 
-# Build (verify bundling; `pg` may require install for full build test)
-bun build ./src/index.ts --outdir ./dist
+# Run with custom environment variables
+PORT=4001 DB_HOST=localhost DB_PORT=5432 DB_USER=admin DB_PASSWORD=admin123 DB_NAME=sgc_db bun --watch src/index.ts
+```
+
+---
+
+## Build / test (local)
+
+```bash
+# 1. Run unit tests only (fast, no DB or server required)
+bun test ./test/create-usuario-handler.test.ts
+# or via npm script:
+bun run test:unit
+
+# 2. Run API integration tests (requires backend running on http://localhost:4001)
+bun test ./test/usuarios.backend.api.test.ts
+# or via npm script:
+bun run test:api
+
+# 3. Run all tests via runner script
+bun run test:all
+
+# 4. Build bundle (verifies bundling; --external pg if pg is not installed in local node_modules)
+bun build ./src/index.ts --outdir ./dist --target bun --external pg
 ```
 
 ---
@@ -48,11 +95,11 @@ bun build ./src/index.ts --outdir ./dist
 ## DB access (`sgc_db`, user `admin`)
 
 ```bash
-# Open psql inside the running DB container
-docker exec -it $(docker compose ps -q SGC_postgres) psql -U admin -d sgc_db
+# Open interactive psql inside the running DB container
+docker compose exec -it SGC_postgres psql -U admin -d sgc_db
 
 # Run init schema manually (only when data dir is empty; compose mounts it at init)
-docker exec -i $(docker compose ps -q SGC_postgres) psql -U admin -d sgc_db < ./db/init/01-schema.sql
+docker compose exec -T SGC_postgres psql -U admin -d sgc_db < ./db/init/01-schema.sql
 ```
 
 Inside `psql`:
@@ -101,17 +148,9 @@ docker network ls
 # Volumes
 docker volume ls
 
-# Inspect DB service IP
+# Inspect DB service IP inside the Docker network
 docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker compose ps -q SGC_postgres)
 
-# View compose file path
-pwd
-```
-
----
-
-## Clean stop (only containers; keeps volume and DB)
-
-```bash
-docker compose stop
+# Inspect backend service IP
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker compose ps -q sgc_backend)
 ```
