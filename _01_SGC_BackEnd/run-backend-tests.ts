@@ -1,0 +1,84 @@
+const testFile = "test/usuarios.backend.api.test.ts";
+const testDirectory = "./test";
+const args = Bun.argv.slice(2);
+
+if (args.length > 1 || (args.length === 1 && args[0] !== "--container" && args[0] !== "--help")) {
+  console.error("Usage: bun run test:all [-- --container | --help]");
+  process.exit(2);
+}
+
+if (args[0] === "--help") {
+  console.log([
+    "Run backend handler unit tests and API tests locally:",
+    "  bun run test:all",
+    "",
+    "Run handler unit tests locally and API tests inside the running Compose backend container:",
+    "  bun run test:all -- --container",
+  ].join("\n"));
+  process.exit(0);
+}
+
+const inContainer = args[0] === "--container";
+
+console.log(inContainer
+  ? "Running handler unit tests locally, then API tests inside the Compose backend container..."
+  : `Running backend handler unit tests and API tests locally against ${process.env.TEST_URL ?? "http://localhost:4001"}...`);
+
+async function run(command: string[]): Promise<number> {
+  const process = Bun.spawn(command, {
+    cwd: import.meta.dir,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  return await process.exited;
+}
+
+if (!inContainer) {
+  process.exitCode = await run(["bun", "test", testDirectory]);
+} else {
+  process.exitCode = await run(["bun", "test", "test/create-usuario-handler.test.ts"]);
+  if (process.exitCode !== 0) {
+    process.exit(process.exitCode);
+  }
+
+  const containerTestFile = `/tmp/backend-api-test-${process.pid}.ts`;
+  const copied = await run(["docker", "compose", "cp", testFile, `backend:${containerTestFile}`]);
+
+  if (copied !== 0) {
+    process.exitCode = copied;
+  } else {
+    try {
+      process.exitCode = await run([
+        "docker",
+        "compose",
+        "exec",
+        "-T",
+        "-e",
+        "TEST_URL=http://localhost:4001",
+        "-e",
+        "API_URL=http://localhost:4001",
+        "backend",
+        "bun",
+        "test",
+        containerTestFile,
+      ]);
+    } finally {
+      const removed = await run([
+        "docker",
+        "compose",
+        "exec",
+        "-T",
+        "-u",
+        "0",
+        "backend",
+        "rm",
+        "-f",
+        containerTestFile,
+      ]);
+      if (removed !== 0) {
+        console.error(`Could not remove temporary test file ${containerTestFile} from the container.`);
+        if (process.exitCode === 0) process.exitCode = removed;
+      }
+    }
+  }
+}
