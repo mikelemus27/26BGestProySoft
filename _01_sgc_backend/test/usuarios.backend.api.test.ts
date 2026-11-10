@@ -10,7 +10,6 @@ import { describe, test, expect } from "bun:test";
 const LOCAL_BASE_URL = "http://localhost:4001";
 // Remove surrounding whitespace and trailing slashes so endpoint paths can be appended consistently.
 const CONFIGURED_BASE_URL = process.env.API_URL?.trim().replace(/\/+$/, "");
-if (!CONFIGURED_BASE_URL) { console.log("no Existe archivo env") }
 const BASE_URL = CONFIGURED_BASE_URL || LOCAL_BASE_URL;
 const parsedBaseUrl = new URL(BASE_URL);
 if (parsedBaseUrl.protocol !== "http:" && parsedBaseUrl.protocol !== "https:") {

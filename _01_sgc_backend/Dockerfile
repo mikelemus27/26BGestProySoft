@@ -32,5 +32,5 @@ COPY --from=deps /app/node_modules ./node_modules
 # Cambia al usuario 'bunuser' en el stage final
 USER bunuser
 
-EXPOSE 4001
+EXPOSE 3000
 CMD ["bun", "run", "./dist/index.js"]   
