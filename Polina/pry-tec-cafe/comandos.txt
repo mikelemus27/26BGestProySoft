@@ -1,0 +1,6 @@
+
+
+npm run exec  : ejecutar 1 sla vez
+npm run dev:  ejecuta  y se mantiene ejecutando  minetras  detecte cambios en codigo
+npm run build:  compila  y gnera los codigo de js  que se podran  publiucar en la versional ejecutable
+npm run start:  ejecuta  la version dist (final)  en js  del proyecto

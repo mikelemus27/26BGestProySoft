@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",                 // JavaScript moderno compatible con Node 22
+    "module": "nodenext",               // ESM nativo en Node
+    "moduleResolution": "nodenext",     // resolución de imports estilo Node ESM
+    "rootDir": ".",                  // carpeta con tus archivos TypeScript
+    "outDir": "./dist",                  // carpeta para archivos compilados
+    "strict": true,                      // verificación de tipos estricta
+    "esModuleInterop": true,             // compatibilidad con imports CommonJS
+    "forceConsistentCasingInFileNames": true, // evita problemas con mayúsculas/minúsculas
+    "skipLibCheck": true,                // ignora comprobación de tipos de librerías
+    "sourceMap": true,                   // permite depuración con .ts
+    "verbatimModuleSyntax": false,       // mantiene sintaxis ESM
+    "isolatedModules": true             // requiere que cada archivo pueda compilarse de forma independiente
+    
+
+  },
+  "include": ["src","tests"],                    // solo compila la carpeta src
+  "exclude": ["node_modules", "dist"]    // evita compilar dependencias y salida
+}
