@@ -6,3 +6,5 @@ https://drive.google.com/drive/folders/12LgzML4tdXB7blAuA4pkYY8OVXPsfpGI?usp=sha
 # creacion del documento plan de proyecto
 https://docs.google.com/document/d/10olpTSWjzbk18TT8k38KKQPcSgCtVuTz/edit?usp=drive_link&ouid=111491165821653682668&rtpof=true&sd=true
 
+# creacion del documento análisis y plan de riesgos 
+https://docs.google.com/document/d/1LEpeg6OKI-Is7QTMCaIaFpK5YdIuCUpFA-WMVVecdyI/edit?usp=sharing
